@@ -18,10 +18,16 @@ knitr::opts_chunk$set(
 
 The goal of r-mass-spectrometry-tools is to contain functions for processing mass spectrometry data.
 
+
 What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
 
+
+![](../../Garcia_Lab/Figures/Orbitrap.png)
+
 ```{r cars}
+
 summary(cars)
+
 ```
 
 You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date.

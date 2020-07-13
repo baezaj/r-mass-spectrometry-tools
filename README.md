@@ -13,7 +13,10 @@ processing mass spectrometry data.
 What is special about using `README.Rmd` instead of just `README.md`?
 You can include R chunks like so:
 
+![](../../Garcia_Lab/Figures/Orbitrap.png)
+
 ``` r
+
 summary(cars)
 #>      speed           dist       
 #>  Min.   : 4.0   Min.   :  2.00  
