@@ -7,8 +7,12 @@
 
 <!-- badges: end -->
 
+<<<<<<< HEAD
 The goal of r-mass-spectrometry-tools is to contain functions for
 processing mass spectrometry data.
+=======
+The goal of r-mass-spectrometry-tools is to …
+>>>>>>> 53f018d2328242157292256d853e245e3aa53652
 
 What is special about using `README.Rmd` instead of just `README.md`?
 You can include R chunks like so:
