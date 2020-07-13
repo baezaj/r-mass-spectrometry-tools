@@ -7,7 +7,7 @@
 
 <!-- badges: end -->
 
-The goal of r-mass-spectrometry-tools is to house a set of functions for
+The goal of r-mass-spectrometry-tools is to contain functions for
 processing mass spectrometry data.
 
 What is special about using `README.Rmd` instead of just `README.md`?
