@@ -3,7 +3,7 @@
 # Import fasta as df ------------------------------------------------------
 
 
-fasta_as_df <- function(fname){
+import_fasta_as_df <- function(fname){
   
   
   # Error handling ----------------------------------------------------------
@@ -45,8 +45,8 @@ fasta_as_df <- function(fname){
   # Creating a dataframe from the extracted information
   fasta_df <- data.frame(cbind(ProteinAccession, ProteinDescription, GeneName, Organism))
   
-  # Protein Sequence
-  fasta_df$ProteinSequence <- sapply(fasta, FUN = paste, collapse = "")
+  # # Protein Sequence
+  # fasta_df$ProteinSequence <- sapply(fasta, FUN = paste, collapse = "")
   
   return(fasta_df)
   
