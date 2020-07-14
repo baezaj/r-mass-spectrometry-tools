@@ -7,8 +7,8 @@
 
 <!-- badges: end -->
 
-The goal of r-mass-spectrometry-tools is to house functions for
-processing mass spectrometry data.
+This repository contains functions for analyzing quantitative mass
+spectrometry data.
 
 <center>
 
