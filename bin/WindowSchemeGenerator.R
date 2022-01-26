@@ -72,7 +72,7 @@ ggplot(window_scheme) +
 # export ------------------------------------------------------------------
 
 
+
 write_csv(window_scheme, file = paste0("DIA_wide-window_", start_mz, "_", stop_mz, "mz_", num_windows, "x", increment, "mz-ol",".csv"))
 write_csv(window_scheme, file = paste0("DIA_GPF_", start_mz, "_", stop_mz, "mz_", num_windows, "x", increment, "mz-ol",".csv"))
-
 
