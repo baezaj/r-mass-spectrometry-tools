@@ -2,7 +2,6 @@
 # -------------------------------------------------------------------------
 
 
-options(stringsAsFactors = FALSE)
 library(tidyverse)
 
 # -------------------------------------------------------------------------
@@ -10,6 +9,10 @@ library(tidyverse)
 
 start_mz <- 400
 stop_mz <- 1000
+
+# For the HFX, Exploris480 and Ecclipse use 75 windows
+# For the QE, QE-HF use 25 windows
+
 num_windows <- 75
 
 optimalMzIncrement <- 1.00045475
@@ -39,7 +42,6 @@ cycle_1 <- cycle_1 %>%
 
 # Cycle 2 -----------------------------------------------------------------
 
-temp <- cycle_1$index[nrow(cycle_1)]
 
 cycle_2 <- data.frame(index = 0:(num_windows))
 
@@ -70,5 +72,7 @@ ggplot(window_scheme) +
 # export ------------------------------------------------------------------
 
 
-# export(window_scheme, file = paste0("DIA_Proteome_", num_windows, "_windows_", start_mz, "_", stop_mz, "_mz", ".csv"))
+write_csv(window_scheme, file = paste0("DIA_wide-window_", start_mz, "_", stop_mz, "mz_", num_windows, "x", increment, "mz-ol",".csv"))
+write_csv(window_scheme, file = paste0("DIA_GPF_", start_mz, "_", stop_mz, "mz_", num_windows, "x", increment, "mz-ol",".csv"))
+
 
