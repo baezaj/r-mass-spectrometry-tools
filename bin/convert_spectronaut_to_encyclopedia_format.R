@@ -50,6 +50,9 @@ convert_spectronaut_to_encyclopedia_format <- function(data){
   # Splitting the EG.PrecursorId column into...
   spectronaut_data[c("PeptideModSeq", "PrecursorCharge")] <- str_split_fixed(spectronaut_data$EG.PrecursorId, pattern = "\\.", n = 2)
   
+  # Convert to numeric
+  spectronaut_data$PrecursorCharge <- as.numeric(spectronaut_data$PrecursorCharge)
+  
   # Cleaning up the PeptideModSeq column
   spectronaut_data$PeptideModSeq <- gsub(" \\s*\\([^\\)]+\\)", "", spectronaut_data$PeptideModSeq)
   
