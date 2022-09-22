@@ -1,3 +1,6 @@
+require(tidyverse)
+require(patchwork)
+
 
 # power analysis ----------------------------------------------------------
 
@@ -26,3 +29,30 @@ power_df <- full_join(power_df, variance_df)
 
 power_df$numSample <- ceiling((2 * (z_alpha + z_beta)^2 * power_df$quintile_variance) / (power_df$delta)^2)
 power_df$CV <- 2 * (power_df$quintile_variance/power_df$numSample) / power_df$desired_FC * 100
+
+
+g1 <- as.data.frame(quintile_variance) %>% 
+  ggplot() +
+  geom_boxplot(aes(x = "a", y = quintile_variance)) +
+  labs(x = NULL,
+       y = expression(Variance~(sigma^2))) +
+  theme_bw(base_size = 14) +
+  theme(axis.text.x = element_blank()) +
+  labs(title = "Power analysis",
+       subtitle = "Variance quintiles")
+
+
+# Power analysis using 
+g2 <- ggplot(power_df) +
+  geom_line(aes(x = desired_FC, y = numSample, group = quintile_variance, color = factor(quintile_variance))) +
+  scale_y_continuous(limits = c(0,20), n.breaks = 11) +
+  scale_color_brewer(palette = "Set1") +
+  theme_bw(base_size = 14) +
+  labs(title = "Power analysis",
+       subtitle = "grouped by variance quintiles",
+       color = "Variance levels",
+       y = "minimum number of samples needed",
+       x = "Desired Fold change") +
+  annotate("text", x = 6.5, y = c(19, 17), label = c(paste0("FDR - ", FDR), paste0("Power - ", power)), size = 5)
+
+g1 + g2 + plot_annotation(tag_levels = "A")
