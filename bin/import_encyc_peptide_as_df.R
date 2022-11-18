@@ -56,9 +56,9 @@ import_encyc_peptide_as_df <- function(elib_dir, fasta_dir){
   ## 6. Collapsing Protein groups
   proteinscores <- left_join(proteinscores, fasta_df) %>% 
     group_by(ProteinGroup) %>% 
-    summarize(ProteinAccession = paste(ProteinAccession, collapse = "; "),
-              ProteinDescription = paste(ProteinDescription, collapse = "; "),
-              GeneName = paste(GeneName, collapse = "; ")) %>% 
+    summarize(ProteinAccession = paste(ProteinAccession, collapse = ";"),
+              ProteinDescription = paste(ProteinDescription, collapse = ";"),
+              GeneName = paste(GeneName, collapse = ";")) %>% 
     ungroup()
   
   ## 7. Merging PeptideSeq with ProteinGroup from the temporary dataframe
