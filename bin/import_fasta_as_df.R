@@ -27,7 +27,7 @@ import_fasta_as_df <- function(fname){
   ProteinAccession <- unlist(lapply(names(fasta), function(x) unlist(strsplit(x, split = " "))[1]))
   
   # Parsing the Protein Description
-  ProteinDescription <- substr(names(fasta), start = regexpr(pattern = " ", names(fasta)), stop = nchar(names(fasta)))
+  ProteinDescription <- substr(names(fasta), start = regexpr(pattern = " ", names(fasta)) + 1, stop = nchar(names(fasta)))
   ProteinDescription <- unlist(lapply(ProteinDescription, function(x) unlist(strsplit(x, split = " OS="))[1]))
   
   # Parsing the Gene name
