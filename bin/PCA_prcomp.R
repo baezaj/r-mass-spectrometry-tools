@@ -38,3 +38,13 @@ pca_df$number <- as.numeric(substring(pca_df$temp,
                                       first = 3,
                                       last = nchar(pca_df$temp)))
 
+# PCA plot
+pca_plot %>% 
+  ggplot(aes(x = PC1, y = PC2)) +
+  geom_point(aes(color = condition), size = 5) +
+  theme_bw(base_size = 12) +
+  labs(title = "Principle Components Analysis",
+       x = paste0("Principal component 1 (",  round(percent_variation[1], digits = 2) * 100, "%)"),
+       y = paste0("Principal component 2 (",  round(percent_variation[2], digits = 2) * 100, "%)")) +
+  coord_fixed()
+
