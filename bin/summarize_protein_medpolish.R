@@ -9,15 +9,15 @@ require(tidyverse)
 ###################
 
 # Summarizing Protein abundance
-protein_summary_medpolish <- function(data){
+protein_summary_medpolish <- function(data, var){
   
   # selecting the data
   tmp <- data %>%
-    select(group, sample_id, run_order, PeptideSeq, PeptideModSeq, PrecursorCharge, abundance_norm) %>%
+    select(group, sample_id, run_order, PeptideSeq, PeptideModSeq, PrecursorCharge, {{var}}) %>%
     unite(id, group, sample_id, run_order, sep = "_") %>%
     unite(feature, PeptideSeq, PeptideModSeq, PrecursorCharge, sep = "_") %>%
-    mutate(abundance_norm = 2^abundance_norm) %>%
-    spread(feature, abundance_norm) %>%
+    mutate({{var}} := 2^{{var}}) %>%
+    spread(feature, {{var}}) %>%
     column_to_rownames("id")
   
   # Tukey Median polish
@@ -47,7 +47,7 @@ proteinquants <- quant %>%
   group_by(ProteinGroup, ProteinAccession, ProteinDescription, GeneName, organism) %>%
   nest() %>%
   mutate(peptide_n = map_dbl(data, count_peptide_per_group)) %>%
-  mutate(abundance = map(data, protein_summary_medpolish)) %>%
+  mutate(abundance = map(data, protein_summary_medpolish, abundance_norm)) %>%
   select(-data) %>%
   unnest(abundance)
 
