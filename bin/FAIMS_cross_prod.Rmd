@@ -1,10 +1,10 @@
 ---
-title: "HCP method development-Native digest w/ FAIMS (EXP22-268573)"
+title: "NISTmAb-Native digest w/ FAIMS"
 author: "Josh Baeza"
 date: "`r Sys.Date()`"
 output: 
   powerpoint_presentation:
-    reference_doc: GSK_template.potx
+    reference_doc: custom_template.potx
 ---
 
 
