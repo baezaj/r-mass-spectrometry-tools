@@ -52,7 +52,7 @@ theme_set(theme_bw(base_size = 18))
 
 ```{r data import, include = FALSE}
 
-psm <- import("../PD24/05May2022_JSB_EXP22-268573_Evo-FAIMS-Eclipse-44_mAb-ND_CVn-22_PSMs.txt")
+psm <- import("../PD24/PSMs.txt")
 fo <- import("../intermediate_data/PD_PSM_Native-digest_FAIMS-OFF.csv")
 prot_list <- import("../intermediate_data/FAIMS_noFAIMS_protein_list_w_annotation.csv")
 annot_file <- import("../intermediate_data/annotation_file.csv")
