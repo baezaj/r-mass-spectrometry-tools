@@ -1,0 +1,578 @@
+---
+title: "HCP method development-Native digest w/ FAIMS (EXP22-268573)"
+author: "Josh Baeza"
+date: "`r Sys.Date()`"
+output: 
+  powerpoint_presentation:
+    reference_doc: GSK_template.potx
+---
+
+
+```{r setup, include=FALSE, warning = FALSE}
+
+knitr::opts_chunk$set(echo = FALSE, 
+                      warning = FALSE,
+                      message = FALSE,
+                      fig.width = 14, 
+                      fig.height = 8)
+
+library(tidyverse)
+library(rio)
+library(janitor)
+library(pheatmap)
+library(dendsort)
+library(RColorBrewer)
+library(UpSetR)
+
+theme_set(theme_bw(base_size = 18))
+
+
+
+
+```
+
+
+
+## Experimental design
+
+* Sample
+  - 0.5 mg NIST mAb
+  - 0.5 ug UPS2
+  - 2 ppm PRTC
+* Samples were prepared on 26Apr2022 (EXP22-268373)
+* Combined two conditions
+  - Native digest with 1/1000 trypsin
+  - Native digest with 1/1250 trypsin 
+* Run peptides on Eclipse using DDA
+  - For each injection, change the FAIMS CV parameter by 2 units
+  - CV ranged from -20 to -110
+
+
+
+
+```{r data import, include = FALSE}
+
+psm <- import("../PD24/05May2022_JSB_EXP22-268573_Evo-FAIMS-Eclipse-44_mAb-ND_CVn-22_PSMs.txt")
+fo <- import("../intermediate_data/PD_PSM_Native-digest_FAIMS-OFF.csv")
+prot_list <- import("../intermediate_data/FAIMS_noFAIMS_protein_list_w_annotation.csv")
+annot_file <- import("../intermediate_data/annotation_file.csv")
+
+nist_mab <- import("../intermediate_data/Skyline_NIST_mAb_Transition_results.csv")
+
+
+
+```
+
+
+```{r, include = FALSE}
+
+psm <- psm %>% 
+  clean_names() %>% 
+  mutate(spectrum_file = str_remove_all(spectrum_file, ".raw"),
+         pep_length = str_length(sequence)) %>% 
+  filter(master_protein_accessions != "") %>% 
+  rename(filename = spectrum_file)
+
+psm <- inner_join(annot_file, psm)
+
+
+fo <- fo %>% 
+  filter(techrep == 1,
+         trypsin == 1000,
+         master_protein_accessions != "") %>% 
+  mutate(pep_length = str_length(sequence)) %>% 
+  select(-digest, -condition, -sample_id, -trypsin, -techrep) %>% 
+  mutate(cv = 0)
+
+
+psm <- bind_rows(psm, fo)
+
+
+# Adding protein annotiation
+psm <- psm %>% 
+  mutate(master_protein_accessions = case_when(
+    master_protein_descriptions == "mAb Heavy Chain" ~ "NIST_HC",
+    master_protein_descriptions == "mAb Light Chain" ~ "NIST_LC",
+    TRUE ~ master_protein_accessions
+  )) %>% 
+  right_join(prot_list, .)
+
+
+psm <- psm %>% 
+  mutate(faims = ifelse(cv == 0, FALSE, TRUE)) %>% 
+  relocate(faims, .after = cv)
+
+# Summarizing Unique peptides
+# using max abundance
+pep <- psm %>% 
+  group_by(master_protein_accessions, master_protein_descriptions, group, cv, faims,
+           sequence, annotated_sequence, modifications, 
+           number_of_missed_cleavages, pep_length) %>% 
+  summarize(abundance = max(precursor_abundance),
+            n = n()) %>% 
+  ungroup()
+
+# Summarizing protein abundances
+# Summary method is max peptide abundance
+prot <- psm %>% 
+  group_by(master_protein_accessions, master_protein_descriptions, group, cv, faims) %>% 
+  summarize(abundance = max(precursor_abundance),
+            n = n()) %>% 
+  ungroup()
+
+```
+
+```{r, include = FALSE}
+
+
+pep_count_off <- pep %>% 
+  filter(faims == FALSE) %>%
+  arrange(-abundance) %>% 
+  distinct(master_protein_accessions, master_protein_descriptions, group, sequence, modifications, .keep_all = TRUE) %>% 
+  group_by(cv) %>%
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  mutate(cumulative = cumsum(count))
+
+pep_count_faims <- pep %>% 
+  filter(faims == TRUE) %>%
+  arrange(-abundance) %>% 
+  distinct(master_protein_accessions, master_protein_descriptions, group, sequence, modifications, .keep_all = TRUE) %>% 
+  group_by(cv) %>%
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  mutate(cumulative = cumsum(count))
+
+pep_count <- bind_rows(pep_count_off, pep_count_faims)
+
+```
+
+```{r, include = FALSE}
+
+
+
+prot_count_off <- prot %>% 
+  filter(faims == FALSE) %>%
+  arrange(-abundance) %>% 
+  distinct(master_protein_accessions, master_protein_descriptions, group, .keep_all = TRUE) %>% 
+  group_by(cv) %>%
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  mutate(cumulative = cumsum(count))
+
+prot_count_faims <- prot %>% 
+  filter(faims == TRUE) %>%
+  arrange(-abundance) %>% 
+  distinct(master_protein_accessions, master_protein_descriptions, group, .keep_all = TRUE) %>% 
+  group_by(cv) %>%
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  mutate(cumulative = cumsum(count))
+
+prot_count <- bind_rows(prot_count_off, prot_count_faims)
+
+
+```
+
+```{r, include = FALSE}
+
+mab <- nist_mab %>%
+  clean_names() %>%
+  mutate(file_name = str_remove_all(file_name, ".raw")) %>% 
+  rename(filename = file_name)
+
+mab <- mab %>% 
+  group_by(filename, protein, peptide, precursor_charge) %>%
+  summarize(rt = mean(retention_time),
+            abundance = sum(area),
+            n = n()) %>%
+  ungroup() %>% 
+  left_join(annot_file, .)
+
+
+pep_list <- mab %>%
+  select(protein, peptide) %>%
+  distinct() %>%
+  mutate(kr_count = str_count(peptide, pattern = "K|R"),
+         krp_count = str_count(peptide, pattern = "KP|RP"),
+         missed_cleavage = kr_count - krp_count - 1) %>%
+  select(protein, peptide, missed_cleavage)
+
+mab <- full_join(pep_list, mab)
+
+
+```
+
+## Total PSMs per run
+
+```{r}
+
+ggplot(psm) +
+  geom_bar(aes(x = cv, fill = group))
+
+```
+
+## Unique Peptides per run
+
+```{r}
+
+
+ggplot(pep) +
+  geom_bar(aes(x = cv, fill = group))
+
+```
+
+
+## Unique Proteins per run
+
+```{r}
+
+
+ggplot(prot) +
+  geom_bar(aes(x = cv, fill = group))
+
+
+```
+
+
+## Cumulative peptide count
+
+```{r}
+
+ggplot(pep_count) +
+  geom_bar(aes(x = cv, y = cumulative), stat = "identity") +
+  labs(title = "Peptide cumulative count")
+
+# ggplot(pep_count) +
+#   geom_bar(aes(x = cv, y = count), stat = "identity")
+
+
+```
+
+## Cumulative protein count
+
+```{r}
+
+
+ggplot(prot_count) +
+  geom_bar(aes(x = cv, y = cumulative), stat = "identity") +
+  labs(title = "Protein cumulative count")
+
+# ggplot(prot_count) +
+#   geom_bar(aes(x = cv, y = count), stat = "identity")
+
+
+```
+
+## Peptide count - FAIMS vs No FAIMS
+
+```{r}
+
+
+pep_faims <- pep %>% 
+  select(master_protein_accessions, master_protein_descriptions, group, faims,
+         sequence, annotated_sequence, modifications, 
+         number_of_missed_cleavages, pep_length) %>% 
+  distinct()
+
+
+
+ggplot(pep_faims) +
+  geom_bar(aes(x = faims, fill = group))
+
+
+
+```
+
+## Protein count - FAIMS vs No FAIMS
+
+```{r}
+
+prot_faims <- prot %>% 
+  select(master_protein_accessions, master_protein_descriptions, group, faims) %>% 
+  distinct()
+
+ggplot(prot_faims) +
+  geom_bar(aes(x = faims, fill = group))
+
+```
+
+## NIST mAb
+
+```{r}
+
+
+
+
+# creating a n x p table of n-peptides and p-conditions
+pep_matrix <- mab %>% 
+  mutate(abundance = ifelse(abundance == 0, 0, log2(abundance))) %>% 
+  filter(!is.na(abundance)) %>% 
+  select(cv, peptide, precursor_charge, missed_cleavage, abundance) %>% 
+  unite(feature, peptide, precursor_charge, missed_cleavage, sep = "_") %>% 
+  spread(cv, abundance) %>% 
+  column_to_rownames("feature") %>% 
+  as.matrix()
+
+# convert all the NAs to 0. 
+# NOTE: without this step, the hierarchical clustering fails
+pep_matrix[is.na(pep_matrix)] <- 0
+
+# making transposed version of the data
+# This data will be used for hierarchical clustering
+dat.n <- t((pep_matrix))
+dat.tn <- t(scale(dat.n))
+
+# converting 0 back to NA
+pep_matrix[pep_matrix == 0] <- NA
+
+
+# Distance
+# Calculate distance between experiments in rows
+d1 <- dist(dat.n, method = "euclidean", diag = FALSE, upper = FALSE)
+# Calculate distance between peptides/proteins in rows
+d2 <- dist(dat.tn, method = "euclidean", diag = FALSE, upper = FALSE)
+
+any(is.na(d2)) # <---- must be FALSE
+
+# hclust
+# CLustering distance between experiments using Ward linkage
+h1 <- fastcluster::hclust(d1, method = "ward.D2", members = NULL)
+# Clustering distance between peptides/proteins using ward linkage
+h2 <- fastcluster::hclust(d2, method = "ward.D2", members = NULL)
+
+# Sorting the dendrogram
+h1_sort <- as.hclust(dendsort(h1))
+h2_sort <- as.hclust(dendsort(h2))
+
+#### Protein annotation
+row_annot <- data.frame(feature = rownames(pep_matrix)) %>% 
+  separate(feature, into = c("peptide", "charge", "missed_cleavage"), sep = "_", remove = FALSE) %>% 
+  rename(mc = missed_cleavage) %>%
+  select(feature, mc, charge) %>% 
+  mutate(mc = as.character(mc),
+         charge = as.character(charge)) %>% 
+  distinct() %>% 
+  column_to_rownames("feature")
+
+
+# sample_names <- data.frame(sample_id = colnames(pep_matrix)) %>% 
+#   separate(sample_id, into = c("digest", "trypsin", "techrep"), sep = "-", remove = FALSE, convert = FALSE) %>% 
+#   mutate(trypsin = str_pad(trypsin, width = 4, side = "left", pad = 0)) %>% 
+#   unite(condition, digest, trypsin, sep = "-", remove = TRUE) %>% 
+#   select(sample_id, condition) %>% 
+#   column_to_rownames("sample_id")
+
+# using custom colors for labels
+my_colors <- list(
+  mc = c(`0` = "#e41a1c",
+         `1` = "#377eb8"
+  ),
+  charge = c(`2` = "#4daf4a",
+             `3` = "#984ea3",
+             `4` = "#ff7f00",
+             `5` = "#ffff33")
+  # condition = c(`DD-0400` = "#a6cee3",
+  #               `DD-0800` = "#1f78b4",
+  #               `DD-1000` = "#b2df8a",
+  #               `DD-1250` = "#33a02c",
+  #               `ND-0400` = "#fb9a99",
+  #               `ND-0800` = "#e31a1c",
+  #               `ND-1000` = "#fdbf6f",
+  #               `ND-1250` = "#ff7f00")
+)
+
+
+# pheatmap
+pheatmap(pep_matrix,
+         scale = "none",
+         # cluster_cols = h1_sort,
+         cluster_cols = FALSE,
+         cluster_rows = h2_sort,
+         show_rownames = TRUE,
+         color = colorRampPalette(brewer.pal(9, "YlGnBu"))(50),
+         # color = viridis(25, direction = -1, option = "D"),
+         annotation_row = row_annot,
+         # annotation_col = sample_names,
+         annotation_colors = my_colors,
+         na_col = "grey80"
+)
+
+
+
+```
+
+## Peptide overlap
+
+```{r}
+
+
+
+pep_upset <- pep %>% 
+  mutate(abundance = 1) %>% 
+  select(sequence, modifications, master_protein_accessions, group, cv, abundance) %>% 
+  unite(feature, sequence, modifications, master_protein_accessions, group, sep = "_") %>% 
+  spread(cv, abundance) %>% 
+  column_to_rownames("feature")
+
+pep_upset[!is.na(pep_upset)] <- 1
+pep_upset[is.na(pep_upset)] <- 0
+
+pep_upset <- pep_upset %>% 
+  rownames_to_column("feature")
+
+
+upset(pep_upset, 
+      nsets = 22,
+      nintersects = 18,
+      keep.order = TRUE,
+      order.by = "freq", 
+      text.scale = 2)
+
+
+
+```
+
+## Peptide overlap
+
+```{r}
+
+
+features <- psm %>% 
+  # filter(group %in% c("NIST")) %>% 
+  select(master_protein_accessions, sequence, modifications) %>% 
+  distinct() %>% 
+  unite(feature, master_protein_accessions, sequence, modifications, sep = "_") %>% 
+  pull()
+
+feature_table <- psm %>% 
+  # filter(group %in% c("NIST")) %>% 
+  mutate(abundance = 1) %>% 
+  select(master_protein_accessions, sequence, modifications, cv) %>%
+  unite(feature, master_protein_accessions, sequence, modifications, sep = "_") %>% 
+  distinct()
+
+
+
+cv_list <- split(feature_table$feature, feature_table$cv)
+
+#Now we turn the list of genes into a table of expts x genes
+cv_df <- stack(setNames(cv_list, nm = paste0("CV-", names(cv_list))))
+
+
+# Use the cross product to count the overlaps
+cv_intersect <- table(cv_df[2:1]) %*% t(table(cv_df[2:1]))
+
+
+pheatmap::pheatmap(cv_intersect, 
+                   cluster_rows = FALSE,
+                   cluster_cols = FALSE,
+                   cellwidth = 12,
+                   cellheight = 12
+                   )
+
+```
+
+## Peptide Heatmap
+
+```{r}
+
+
+# Summarizing Unique peptides
+# using max abundance
+# creating a n x p table of n-peptides and p-conditions
+pep_matrix <- psm %>% 
+  filter(!is.na(precursor_abundance)) %>% 
+  group_by(master_protein_accessions, master_protein_descriptions, group, cv, faims,
+           sequence, annotated_sequence, modifications, charge,
+           number_of_missed_cleavages, pep_length) %>% 
+  summarize(abundance = max(precursor_abundance),
+            n = n()) %>% 
+  ungroup() %>% 
+  mutate(abundance = log2(abundance)) %>% 
+  select(master_protein_accessions, group,
+         sequence, modifications, charge,
+         cv, abundance) %>% 
+  unite(feature, master_protein_accessions, group, sequence, modifications, charge, sep = "__") %>% 
+  spread(cv, abundance) %>% 
+  column_to_rownames("feature") %>% 
+  as.matrix()
+
+# convert all the NAs to 0. 
+# NOTE: without this step, the hierarchical clustering fails
+pep_matrix[is.na(pep_matrix)] <- 0
+
+# making transposed version of the data
+# This data will be used for hierarchical clustering
+dat.n <- t((pep_matrix))
+dat.tn <- t(scale(dat.n))
+
+# converting 0 back to NA
+pep_matrix[pep_matrix == 0] <- NA
+
+
+# Distance
+# Calculate distance between experiments in rows
+d1 <- dist(dat.n, method = "euclidean", diag = FALSE, upper = FALSE)
+# Calculate distance between peptides/proteins in rows
+d2 <- dist(dat.tn, method = "euclidean", diag = FALSE, upper = FALSE)
+
+# any(is.na(d2)) # <---- must be FALSE
+
+# hclust
+# CLustering distance between experiments using Ward linkage
+h1 <- fastcluster::hclust(d1, method = "ward.D2", members = NULL)
+# Clustering distance between peptides/proteins using ward linkage
+h2 <- fastcluster::hclust(d2, method = "ward.D2", members = NULL)
+
+# Sorting the dendrogram
+h1_sort <- as.hclust(dendsort(h1))
+h2_sort <- as.hclust(dendsort(h2))
+
+#### Protein annotation
+row_annot <- data.frame(feature = rownames(pep_matrix)) %>% 
+  separate(feature, into = c("accession","group", "peptide", "modification", "charge"), sep = "__", remove = FALSE) %>% 
+  # rename(mc = missed_cleavage) %>%
+  select(feature, charge) %>% 
+  mutate(charge = as.character(charge)) %>% 
+  distinct() %>% 
+  column_to_rownames("feature")
+
+
+# sample_names <- data.frame(sample_id = colnames(pep_matrix)) %>% 
+#   separate(sample_id, into = c("digest", "trypsin", "techrep"), sep = "-", remove = FALSE, convert = FALSE) %>% 
+#   mutate(trypsin = str_pad(trypsin, width = 4, side = "left", pad = 0)) %>% 
+#   unite(condition, digest, trypsin, sep = "-", remove = TRUE) %>% 
+#   select(sample_id, condition) %>% 
+#   column_to_rownames("sample_id")
+
+# using custom colors for labels
+my_colors <- list(
+  charge = c(`2` = "#4daf4a",
+             `3` = "#984ea3",
+             `4` = "#ff7f00",
+             `5` = "#ffff33",
+             `6` = "#a65628",
+             `7` = "#f781bf") 
+)
+
+
+# pheatmap
+pheatmap(pep_matrix,
+         scale = "row",
+         # cluster_cols = h1_sort,
+         cluster_cols = FALSE,
+         cluster_rows = h2_sort,
+         show_rownames = FALSE,
+         color = colorRampPalette(brewer.pal(9, "YlGnBu"))(50),
+         # color = viridis(25, direction = -1, option = "D"),
+         annotation_row = row_annot,
+         # annotation_col = sample_names,
+         annotation_colors = my_colors,
+         na_col = "grey80"
+)
+
+
+
+```
+
