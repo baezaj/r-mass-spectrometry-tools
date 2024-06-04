@@ -39,11 +39,10 @@ theme_set(theme_bw(base_size = 18))
   - 0.5 mg NIST mAb
   - 0.5 ug UPS2
   - 2 ppm PRTC
-* Samples were prepared on 26Apr2022 (EXP22-268373)
 * Combined two conditions
   - Native digest with 1/1000 trypsin
   - Native digest with 1/1250 trypsin 
-* Run peptides on Eclipse using DDA
+* Run peptides using DDA
   - For each injection, change the FAIMS CV parameter by 2 units
   - CV ranged from -20 to -110
 
