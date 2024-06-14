@@ -35,10 +35,6 @@ REM Import Skyline template and save in new dir
 %SkylineCmd% --in="%SkylineFile%" --out="%WORKING_DIR%\%SkylineOutputFile%" --overwrite 
 
 
-ECHO Root Analysis Dir: %ROOT_ANALYSIS_DIR%
-ECHO Working Analy Dir: %WORKING_DIR%
-
-
 REM Open the new Skyline file, import raw file and export report
 %SkylineCmd% --in="%WORKING_DIR%\%SkylineOutputFile%" --import-file="%RawFile%" --save --report-add=%SkylineTemplate% --report-conflict-resolution=overwrite --report-name="Spotfire Export" --report-file="%RawFile%.csv" --report-format=csv --report-invariant
 
