@@ -13,15 +13,15 @@ FOR /f %%i IN ("%1%") DO (
 
 :: Directories used
 :: SET ROOT_ANALYSIS_DIR=D:\Josue_Baeza_JSB54327\SystemCheck_testing
-SET WORKING_DIR=D:\Josue_Baeza_JSB54327\SystemCheck_testing\NIST_peptides_2mm-column
+SET WORKING_DIR=D:\Josue_Baeza\SystemCheck_testing\NIST_peptides
 
 :: Raw file name
 SET RawFile="%filedrive%%filepath%%filename%%fileextension%"
 
 :: Skyline files used
 SET SkylineCmd="C:\Program Files\Skyline\SkylineCmd.exe"
-SET SkylineFile="D:\Josue_Baeza_JSB54327\SystemCheck_testing\NIST_peptides_2mm-column\NIST_peptides_2mm-column.sky"
-SET SkylineTemplate="%WORKING_DIR%\Spotfire Export Template 10Jun2024.skyr"
+SET SkylineFile="D:\Josue_Baeza\SystemCheck_testing\NIST_peptides_2mm-column\NIST_peptides_2mm-column.sky"
+SET SkylineTemplate="%WORKING_DIR%\Export Template 10Jun2024.skyr"
 SET SkylineOutputFile=Output.sky
 SET SkydFile = %SkylineOutputFile%d
 SET SkylineReport=%RawFile%
